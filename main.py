@@ -24,6 +24,9 @@ from PyQt6 import QtWidgets, QtCore
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
+import pathlib
+import OpenGL
+from OpenGL import *
 
 use(app='PyQt6', gl='gl+')  # needed for instanced
 
@@ -45,21 +48,21 @@ telescope_dic ={
     "Webb": [6.5, 131.4, 2.4],  #JWST pixel size is approx, as it has different pixel sizes in NIRCAM
     "Hubble": [2.4, 56.7, 10],
     "Kepler": [0.95, 27, 244],
-
-
 }
 
+script_directory = pathlib.Path(__file__).parent.resolve()
+print('Set script directory as ', str(script_directory))
 # reading stars
 print("Reading stars from BSC...")
-with open("C:/Users/Admin/PycharmProjects/spaceapps24/files/bsc5.dat") as BSC_catalog:
+with open(str(script_directory) + "/files/bsc5.dat") as BSC_catalog:
     BSC_stars_raw = BSC_catalog.readlines()
 
-# print(BSC_stars_raw[1])
+#print(BSC_stars_raw[1])
 print("Extracting BSC stars")
 stars = []  # array for extracted data
 star = [0] * 9  # an array that represents a star as follows
 # extracting the following in order: 0 name (des), 1 HIP des (???). 2 RA (deg), 3 DEC (deg) (ALL 2000), 4 mag, 5 b-v
-print(len(BSC_stars_raw))
+print(len(BSC_stars_raw), ' stars found in BSC')
 for raw_star in BSC_stars_raw:
 
     if (not (raw_star[5:9] == ("NOVA"))):  # checks for novas and proceeds only if none found
@@ -105,29 +108,19 @@ for raw_star in BSC_stars_raw:
 # planets
 
 print("Reading from planet database...")
-with open("C:/Users/Admin/PycharmProjects/spaceapps24/files/final.txt") as planet_catalog:
+with open(str(script_directory) + "/files/final.txt") as planet_catalog:
     planet_catalog_raw = planet_catalog.readlines()
 
-# print(planet_catalog_raw[1])
+
 
 print("Reading planet parameters...")
 
-#with open("C:/Users/Admin/PycharmProjects/spaceapps24/files/Tpl.txt") as Tpl:
-#    Tpl_raw = Tpl.readlines()
-#with open("C:/Users/Admin/PycharmProjects/spaceapps24/files/Tstar.txt") as Tstar:
-#    Tstar_raw = Tstar.readlines()
-#with open("C:/Users/Admin/PycharmProjects/spaceapps24/files/ro.txt") as ro:
-#    ro_raw = ro.readlines()
-#with open("C:/Users/Admin/PycharmProjects/spaceapps24/files/g.txt") as g:
-#    g_raw = g.readlines()
 
-with open("C:/Users/Admin/PycharmProjects/spaceapps24/files/ea.csv") as ea: #Exoplanet Archive
+with open(str(script_directory) + "/files/ea.csv") as ea:  # Exoplanet Archive
     Ea = ea.readlines()
     for i in range(len(Ea)):
         Ea[i] = Ea[i].split(';') #for some reason excel owerwrote the csv with ; so use ; instead of , if csv is from xcel
-print (Ea[0])
-print (Ea[1000])
-print( Ea [221])
+
 def restructure_data_file(file):
     for i in range(1, len(file)):
         line = file[i]
@@ -140,13 +133,6 @@ def restructure_data_file(file):
             no_data_i = line.rfind('no data')
             file[i] = [line[0:no_data_i], 'none', 'no data']
     return file
-
-
-#Tpl_raw = restructure_data_file(Tpl_raw)
-#ro_raw = restructure_data_file(ro_raw)
-#g_raw = restructure_data_file(g_raw)
-#pn_raw = restructure_data_file(pn_raw)
-#Tstar_raw = restructure_data_file(Tstar_raw)
 
 # planet format^ 0 pl_name,  1 points, 2 dist(pa), 3 ra(deg), 4 dec(deg), 5 magn, 6 mas,
 # 7 temperature 8 ro density 9 g 10 tstar 11 radius of the planet in RE 12 distance to main star (semimajoraxis) 13 mass 14 parent star vmag
@@ -278,7 +264,7 @@ print('stars in database:', n)
 
 pos = np.zeros((n, 3), dtype=np.float32)
 colors = np.ndarray
-  # setting starr colors
+  # setting star colors
 for i in range(0, n):
     star = stars[i]
     pos[i][0] = np.float32(star[2])
@@ -292,8 +278,8 @@ print(pos.ndim)
 # reading and adding the plane/billboard mesh for star display
 
 try:
-    texture_path = load_data_file('C:/Users/Admin/PycharmProjects/spaceapps24/files/star_Sprite.png')
-    mesh_path = load_data_file('C:/Users/Admin/PycharmProjects/spaceapps24/files/star_Mesh_.obj')
+    texture_path = load_data_file(str(script_directory) + '/files/star_Sprite.png')
+    mesh_path = load_data_file(str(script_directory) + '/files/star_Mesh_.obj')
     print(mesh_path)
 except:
     print('file not found')
@@ -346,9 +332,7 @@ mesh.attach(alpha_filter)
 # marker mesh
 
 try:
-    # texture_path = load_data_file('C:/Users/Admin/PycharmProjects/spaceapps24/files/star_Sprite.png')
-    marker_mesh_path = load_data_file('C:/Users/Admin/PycharmProjects/spaceapps24/files/marker_circ.obj')
-    # print(mesh_path)
+    marker_mesh_path = load_data_file(str(script_directory) + '/files/marker_circ.obj')
 except:
     print('file not found')
 
@@ -368,12 +352,13 @@ mark_instance_colors = [(1, 1, 1)] * mark_n_instances
 
 mark_pos = np.zeros((mark_n_instances, 3), dtype=np.float32)
 
+#marker colors and positions
 for i in range(mark_n_instances):
     marker = markers[i]
     mark_pos[i][0] = np.float32(marker[0])
     mark_pos[i][1] = np.float32(marker[1])
     mark_pos[i][2] = 0
-    mark_instance_colors[i] = [(1 - marker[2] / max_score), (marker[2] / max_score), 0]
+    mark_instance_colors[i] = np.clip([np.clip((1 - marker[2] / max_score)**2, 0, 1), np.clip((marker[2] / max_score)**0.5, 0, 1), np.clip((marker[2]/max_score - 0.5)**2-0.5, 0, 1)],0,1)
 
 mark_instance_positions = mark_pos
 mark_face_colors = np.random.rand(len(mark_faces), 3)
@@ -383,10 +368,10 @@ for i in range(mark_n_instances):
         scale = 5 * (np.exp(- markers[i][3] / 8)) * (markers[i][2] / max_score + 0.5)
     except:
         scale = 1
-        print(markers[i], np.exp(-markers[i][3] / 3),)
+        #print(markers[i], np.exp(-markers[i][3] / 3),)
     mark_instance_transforms[i] = [[scale, 0, 0], [0, scale, 0], [0, 0, scale]]  # *instance_transforms[i]
 
-print(mark_instance_transforms[1])
+#print(mark_instance_transforms[1])
 # Create a colored `MeshVisual`.
 markerMesh = InstancedMesh(
     mark_vertices,
@@ -455,7 +440,7 @@ class MainWindow(QMainWindow):
         widget.setLayout(layout)
         leftSidebar = QWidget()
         leftSidebar.setLayout(QVBoxLayout())
-        leftSidebar.setMinimumSize(290, 200)
+        leftSidebar.setMinimumSize(330, 200)
         widget.layout().addWidget(leftSidebar)
         widget.layout().addWidget(canvas.native)  # main canvas viewport
         #widget.layout().addWidget(self.button)  # example button
@@ -466,7 +451,7 @@ class MainWindow(QMainWindow):
         self.sidebar.setAllowedAreas(Qt.DockWidgetArea.RightDockWidgetArea)
         self.sidebar.DockWidgetCloseable = False  # doesnt work!!!
         self.sidebar.setLayout(QVBoxLayout())
-        self.sidebar.setMinimumSize(320, 500)
+        self.sidebar.setMinimumSize(330, 500)
         # self.sidebar.setFeatures(DockWidgetCloseable = False) #the sidebar cannot be closed
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.sidebar)
         sidebarWidget = QWidget()
@@ -697,13 +682,13 @@ def get_view_axis_in_scene_coordinates(gvpos, gvmesh):
 
 def planetToLabelText(planet): # formulates the label text for planet tabs, including whether they are visible
     visNote = 'Unknown'
-    print(planet[6])
+
     visFactor: float = 1
     try:
         #if not (planet[6] is None or planet[6] == 'Unknown' or planet[6] == 'no data'):
-            print(resolution)
+
             visFactor = float(planet[6]) / resolution
-            print (visFactor, 'v')
+
             if visFactor >= 2:
                 visNote = 'Good'
             elif visFactor >= 1:
@@ -746,10 +731,8 @@ if __name__ == '__main__':
 
 
     win.focalSlider.setSliderPosition(focal_dist)
-    win.diamchange() #updates the sliders and telescope window to set default values
+    win.diamchange()  # updates the sliders and telescope window to set default values
 
     win.show()
     app.run()
     # cant' put anything here - app run is an infinite loop, and only after it is closed code here can be run
-
-    # Qapp.exec()
