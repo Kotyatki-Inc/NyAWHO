@@ -40,6 +40,15 @@ focal_dist: float = 1  # telescope focal distance
 planets_visible: int = 0
 total_telescope_score: float = 0  # total score for planets visible using given telescope config
 
+  # telescope dictionary: sorted this way: diameter, focal length, pixel size
+telescope_dic ={
+    "Webb": [6.5, 131.4, 2.4],  #JWST pixel size is approx, as it has different pixel sizes in NIRCAM
+    "Hubble": [2.4, 56.7, 10],
+    "Kepler": [0.95, 27, 244],
+
+
+}
+
 # reading stars
 print("Reading stars from BSC...")
 with open("C:/Users/Admin/PycharmProjects/spaceapps24/files/bsc5.dat") as BSC_catalog:
@@ -73,11 +82,15 @@ for raw_star in BSC_stars_raw:
                 star[3] *= -1
 
             # mag and color index Vmag 103-107 B_V 110-114
-            star[4] = float(raw_star[102:107])
+            try:
+                star[4] = float(raw_star[102:107])
+            except:
+                star[4] = 6.0  # default value of 6
+                print('no vmag, setting def')
             try:
                 star[5] = float(raw_star[109:114])
             except:
-                star[5] = 0
+                star[5] = 0.0
                 # print('no B-V found, setting def')
 
             # stars[6] is an array of planets
@@ -400,6 +413,17 @@ def setPreset(name):
     global pixel_size
     global focal_dist
     global diam
+    tel = telescope_dic[name]
+    diam = tel[0]
+    focal_dist = tel[1]
+    pixel_size = tel[2]
+
+    win.focalSlider.setSliderPosition(int(focal_dist*10))
+    win.pixsizeSlider.setSliderPosition(int(pixel_size*10))
+    win.diamSlider.setSliderPosition(int(diam*10))
+
+
+
     #placeholder
 
 def calculatePlanetVis():
@@ -498,24 +522,24 @@ class MainWindow(QMainWindow):
 
         self.focalSlider = QSlider(Qt.Orientation.Horizontal, self)  # telescope focal length slider: in F*10 vals for finer control
         self.focalSlider.setMinimum(10)
-        self.focalSlider.setMaximum(100)
+        self.focalSlider.setMaximum(2000)
         self.focalSlider.setSliderPosition(40)
         self.focalSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.focalSlider.setTickInterval(5)
+        self.focalSlider.setTickInterval(50)
         self.focalSlider.valueChanged.connect(self.diamchange)
         leftSidebar.layout().addWidget(self.focalSlider)
 
         self.pixsizeLabel = QLabel()
         self.pixsizeLabel.setFont(QFont('Consolas', 14))
-        self.pixsizeLabel.setText('Pixel size:' + str(pixel_size) + ' nm')
+        self.pixsizeLabel.setText('Pixel size:' + str(pixel_size) + ' mkm')
         leftSidebar.layout().addWidget(self.pixsizeLabel)
 
         self.pixsizeSlider = QSlider(Qt.Orientation.Horizontal, self)  # telescope pixel size in nm slider: in *10 vals for finer control
         self.pixsizeSlider.setMinimum(20)
-        self.pixsizeSlider.setMaximum(200)
+        self.pixsizeSlider.setMaximum(3000)
         self.pixsizeSlider.setSliderPosition(40)
         self.pixsizeSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.pixsizeSlider.setTickInterval(5)
+        self.pixsizeSlider.setTickInterval(100)
         self.pixsizeSlider.valueChanged.connect(self.diamchange)
         leftSidebar.layout().addWidget(self.pixsizeSlider)
 
@@ -555,8 +579,14 @@ class MainWindow(QMainWindow):
         hwoButton = QPushButton()
         hwoButton.setText('HWO')
         hwoButton.setFont(QFont('Consolas', 14))
-        presetsWisget.layout().addWidget(hwoButton)
-        hwoButton.clicked.connect(self.setPrHWO)
+        #presetsWisget.layout().addWidget(hwoButton)
+        #hwoButton.clicked.connect(self.setPrHWO)
+
+        KeplerButton = QPushButton()
+        KeplerButton.setText('Kepler')
+        KeplerButton.setFont(QFont('Consolas', 14))
+        presetsWisget.layout().addWidget(KeplerButton)
+        KeplerButton.clicked.connect(self.setPrKepler)
 
         self.planetsObs = QLabel()
         self.planetsObs.setFont(QFont('Consolas', 14))
@@ -566,12 +596,21 @@ class MainWindow(QMainWindow):
 
         #
     def setPrHubble(self):
-        setPreset('hubble')
+        setPreset('Hubble')
+        setPreset('Hubble')
+        setPreset('Hubble')
     def setPrWebb(self):
-        setPreset('webb')
+        setPreset('Webb')
+        setPreset('Webb')
+        setPreset('Webb')
 
     def setPrHWO(self):
-        setPreset('hwo')
+        setPreset('Hwo')
+
+    def setPrKepler(self):
+        setPreset('Kepler')
+        setPreset('Kepler')
+        setPreset('Kepler')
     def diamchange(self):
         global resolution
         global diam
@@ -583,14 +622,14 @@ class MainWindow(QMainWindow):
         focal_dist = self.focalSlider.value()/10
         pixel_size = self.pixsizeSlider.value()/10
         angres = 1.22 * wavelength / diam * ((10**(-9))*180/np.pi*3600*1000)
-        pixres = pixel_size / focal_dist * ((10**(-9))*180/np.pi*3600*1000)
+        pixres = pixel_size / focal_dist * ((10**(-6))*180/np.pi*3600*1000)
         resolution = max(angres, pixres)
         self.diamslname.setText('Telescope diameter, m: ' + str(round(diam, 1)))
         self.focalslname.setText('Focal length, m: ' + str(round(focal_dist, 1)))
         self.angresLabel.setText('Angular resolution: ' + str(round(angres, 4)) + 'mas')
         self.pixresLabel.setText('Pixel ang res: ' + str(round(pixres, 4)) + 'mas')
         self.resLabel.setText('Total ang res: ' + str(round(resolution, 4)) + 'mas')
-        self.pixsizeLabel.setText('Pixel size: ' + str(round(pixel_size, 1)) + 'nm')
+        self.pixsizeLabel.setText('Pixel size: ' + str(round(pixel_size, 1)) + 'mkm')
 
         calculatePlanetVis()
 
